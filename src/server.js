@@ -159,7 +159,6 @@ function startServer(port = PORT) {
           behaviorHints: { configurable: true, configurationRequired: false }
         };
         return writeJson(res, manifest, 200);
-         parent of bfc5d08 (Update server.js)
       }
 
 
@@ -211,6 +210,7 @@ function startServer(port = PORT) {
         }
       }
 
+
       // Existing fallback redirect for no-type form (kept for compatibility)
       {
         const m0 = path.match(/^\/stream\/([^\/]+)\.json$/);
@@ -221,6 +221,7 @@ function startServer(port = PORT) {
           res.writeHead(302, { Location: redirectTo });
           return res.end();
         }
+      }
 
       // /stream/:type/:id.json
       const m = path.match(/^\/stream\/(movie|series)\/(.+)\.json$/);
@@ -254,7 +255,7 @@ function startServer(port = PORT) {
         combined = sortByLanguagePreference(combined, langPrio);
 
         // Then run the original scoring/selection (keeps your quality/speed logic)
-        const selected = pickStreams(langOrdered, useDebrid, include1080, log);
+        const selected = pickStreams(combined, useDebrid, include1080, log);
 
         // Clean titles + "AutoStream (AD/RD/...)" name
         const metaInfo = (meta && meta.name) ? meta : await fetchMeta(type, id, log);
