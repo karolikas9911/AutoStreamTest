@@ -20,6 +20,19 @@ const cometCache = new TTLCache({ max: 500, ttlMs: 60 * 60 * 1000 });
 const mediafusionConfigCache = new TTLCache({ max: 50, ttlMs: 24 * 60 * 60 * 1000 }); // 24 hour cache for encrypted configs
 
 /**
+ * Clear all source caches
+ */
+function clearCaches() {
+ torrentioCache.clear();
+ tpbCache.clear();
+ nuvioCache.clear();
+ mediafusionCache.clear();
+ cometCache.clear();
+ mediafusionConfigCache.clear();
+ console.log('[CACHE] All source caches cleared');
+}
+
+/**
  * Build standard Stremio stream URL (for Torrentio, TPB, Nuvio)
  */
 function buildUrl(base, type, id, query) {
@@ -568,15 +581,17 @@ async function fetchCometStreams(type, id, options = {}, log = ()=>{}) {
  let arr = Array.isArray(j) ? j : (j && Array.isArray(j.streams) ? j.streams : []);
  arr = Array.isArray(arr) ? arr : [];
  
- // Filter out error/info streams (non-debrid disabled messages, etc.)
+ // Filter out error/info streams (non-debrid disabled messages, rate limits, etc.)
  arr = arr.filter(stream => {
   if (!stream || !stream.name) return false;
   // Filter out error streams that contain warning messages
   const name = stream.name.toLowerCase();
   const desc = (stream.description || '').toLowerCase();
-  if (name.includes('⚠') || name.includes('❌') || name.includes('🚫')) return false;
+  if (name.includes('⚠') || name.includes('❌') || name.includes('🚫') || name.includes('🐢')) return false;
+  if (name.includes('rate-limit') || name.includes('rate limit')) return false;
   if (desc.includes('non-debrid') || desc.includes('disabled')) return false;
   if (desc.includes('obsolete') || desc.includes('reconfigure')) return false;
+  if (desc.includes('rate-limit') || desc.includes('rate limit')) return false;
   return true;
  });
  
@@ -590,8 +605,13 @@ async function fetchCometStreams(type, id, options = {}, log = ()=>{}) {
  });
  
  log('comet', `Found ${preservedStreams.length} streams`);
- cometCache.set(url, preservedStreams);
+ 
+ // Only cache successful responses with actual streams (not error/rate-limit responses)
+ if (preservedStreams.length > 0) {
+  cometCache.set(url, preservedStreams);
+ }
+ 
  return preservedStreams;
 }
 
-module.exports = { fetchTorrentioStreams, fetchTPBStreams, fetchNuvioStreams, fetchCometStreams };
+module.exports = { fetchTorrentioStreams, fetchTPBStreams, fetchNuvioStreams, fetchCometStreams, clearCaches };

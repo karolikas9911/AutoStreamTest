@@ -1087,6 +1087,20 @@ function startServer(port = PORT) {
  }, 200);
  }
  
+ // Cache clear endpoint - clears all source caches
+ if (pathname === '/debug/clear-cache' || pathname === '/admin/clear-cache') {
+ try {
+  // Clear caches from sources module
+  const sourcesModule = require('./services/sources');
+  if (sourcesModule.clearCaches) {
+   sourcesModule.clearCaches();
+  }
+  return writeJson(res, { success: true, message: 'All source caches cleared' }, 200);
+ } catch (e) {
+  return writeJson(res, { success: false, error: e.message }, 500);
+ }
+ }
+ 
  // Debug endpoint to test upstream source connectivity
  if (pathname === '/debug/sources') {
  const testType = q.get('type') || 'movie';
