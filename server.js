@@ -1423,17 +1423,37 @@ function startServer(port = PORT) {
  type = pathBasedStreamMatch[2];
  id = decodeURIComponent(pathBasedStreamMatch[3]);
  
- console.log('[INFO] PATH-BASED STREAM: Configuration path:', configurationPath);
- 
  // Parse config from path and merge with query params (path takes precedence)
  try {
  const pathParams = parsePathConfiguration(configurationPath);
- console.log('[DEBUG] PATH-BASED STREAM: Parsed params:', Object.keys(pathParams));
+ 
+ // Log the full parsed config (mask sensitive keys)
+ const maskedParams = {};
+ for (const [k, v] of Object.entries(pathParams)) {
+ if (isSensitiveParam(k)) {
+ maskedParams[k] = v ? `****${v.slice(-4)}` : 'empty';
+ } else {
+ maskedParams[k] = v;
+ }
+ }
+ console.log('[INFO] PATH-BASED: Processing configuration:', configurationPath);
+ console.log('[DEBUG] PATH-BASED: Parsed params:', JSON.stringify(maskedParams));
  
  // Merge path params into query params (path params take precedence)
+ let mergeCount = 0;
  for (const [key, value] of Object.entries(pathParams)) {
  if (!q.has(key)) {
  q.set(key, value);
+ mergeCount++;
+ }
+ }
+ console.log(`[DEBUG] PATH-BASED: Merged ${mergeCount} params into query`);
+ 
+ // Verify debrid params specifically
+ const debridKeys = ['alldebrid', 'ad', 'realdebrid', 'rd', 'premiumize', 'pm', 'torbox', 'tb'];
+ for (const dk of debridKeys) {
+ if (q.has(dk) && q.get(dk)) {
+ console.log(`[OK] PATH-BASED: Found debrid key "${dk}" = ****${q.get(dk).slice(-4)}`);
  }
  }
  } catch (error) {
@@ -1612,6 +1632,15 @@ function startServer(port = PORT) {
  // First check all short-form and long-form provider keys
  let earlyDebridProvider = null;
  let earlyDebridApiKey = null;
+ 
+ // DEBUG: Log what's in q at this point for debrid keys
+ const debugDebridKeys = ['ad', 'alldebrid', 'rd', 'realdebrid', 'pm', 'premiumize', 'tb', 'torbox', 'apikey'];
+ const foundDebridInQ = [];
+ for (const dk of debugDebridKeys) {
+  const val = q.get(dk);
+  if (val) foundDebridInQ.push(`${dk}=****${val.slice(-4)}`);
+ }
+ console.log(`[${requestId}] [DEBRID-DEBUG] Keys in q: ${foundDebridInQ.length > 0 ? foundDebridInQ.join(', ') : 'NONE'}`);
  
  // Short-form to long-form mapping for debrid providers
  const shortFormMapping = {
