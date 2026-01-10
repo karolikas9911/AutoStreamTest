@@ -337,17 +337,25 @@ function preserveStreamMetadata(stream, source = 'unknown') {
 }
 async function fetchJson(url, timeoutMs, log = ()=>{}, useProxy = true) {
  try {
- // Use CF proxy for Torrentio/TPB to bypass IP blocks on Render
+ // Use CF proxy for Torrentio/Comet/etc to bypass IP blocks on Render
  const fetchUrl = useProxy ? proxyUrl(url) : url;
+ 
+ // Debug: Log whether proxy is being used
+ if (useProxy && CF_PROXY_URL) {
+ log('proxy', `Using CF proxy for: ${url.substring(0, 60)}...`);
+ } else if (useProxy && !CF_PROXY_URL) {
+ log('warn', `CF_PROXY_URL not set - direct fetch to: ${url.substring(0, 60)}...`);
+ }
+ 
  const r = await fetchWithTimeout(fetchUrl, { redirect: 'follow' }, timeoutMs || 12000);
  if (!r || !r.ok) { 
- log('status', r && r.status, url); 
+ log('status', r && r.status, url.substring(0, 80)); 
  return { ok: false, data: null, error: `HTTP ${r ? r.status : 'unknown'}` }; 
  }
  const data = await r.json();
  return { ok: true, data, error: null };
  } catch (e) { 
- log('error', e && e.message || e); 
+ log('error', e && e.message || e, url.substring(0, 60)); 
  return { ok: false, data: null, error: e && e.message || String(e) }; 
  }
 }
@@ -575,8 +583,8 @@ async function fetchCometStreams(type, id, options = {}, log = ()=>{}) {
  
  log('comet', 'Fetching from:', url.substring(0, 80) + '...');
  
- // Comet doesn't need proxy - ElfHosted generally allows cloud IPs
- const result = await fetchJson(url, 15000, (m,...a)=>log('comet',m,...a), false);
+ // FIXED: Comet/ElfHosted blocks cloud IPs (Render, Vercel) - use CF proxy if available
+ const result = await fetchJson(url, 15000, (m,...a)=>log('comet',m,...a), true);
  const j = result.ok ? result.data : null;
  let arr = Array.isArray(j) ? j : (j && Array.isArray(j.streams) ? j.streams : []);
  arr = Array.isArray(arr) ? arr : [];

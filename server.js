@@ -228,8 +228,13 @@ const FORCE_SECURE_MODE = process.env.FORCE_SECURE_MODE === 'true' || process.en
 const BLOCK_ENV_CREDENTIALS = process.env.BLOCK_ENV_CREDENTIALS !== 'false'; // Default to blocking
 const EMERGENCY_DISABLE_DEBRID = process.env.EMERGENCY_DISABLE_DEBRID === 'true';
 
+// CRITICAL: Log proxy status on startup
 if (CF_PROXY_URL) {
- console.log('[PROXY] Using Cloudflare Worker proxy:', CF_PROXY_URL);
+ console.log('[PROXY] ✅ CF_PROXY_URL is set:', CF_PROXY_URL);
+ console.log('[PROXY] Comet/Torrentio requests will be proxied to bypass IP blocks');
+} else {
+ console.log('[PROXY] ⚠️ CF_PROXY_URL NOT SET - Comet/Torrentio may fail on cloud hosts (Render/Vercel)');
+ console.log('[PROXY] Set CF_PROXY_URL env var to your Cloudflare Worker proxy URL');
 }
 
 if (FORCE_SECURE_MODE) {
