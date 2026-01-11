@@ -605,7 +605,15 @@ async function fetchCometStreams(type, id, options = {}, log = ()=>{}) {
  
  console.log(`[COMET] Raw streams: ${arr.length}`);
  
+ // Debug: Log what Comet actually returned (first stream)
+ if (arr.length > 0 && arr.length <= 5) {
+  arr.forEach((s, i) => {
+   console.log(`[COMET] Stream ${i}: name="${s.name?.substring(0, 50)}", desc="${(s.description || '').substring(0, 80)}"`);
+  });
+ }
+ 
  // Filter out error/info streams (non-debrid disabled messages, rate limits, etc.)
+ const beforeFilter = arr.length;
  arr = arr.filter(stream => {
   if (!stream || !stream.name) return false;
   // Filter out error streams that contain warning messages
@@ -618,6 +626,10 @@ async function fetchCometStreams(type, id, options = {}, log = ()=>{}) {
   if (desc.includes('rate-limit') || desc.includes('rate limit')) return false;
   return true;
  });
+ 
+ if (beforeFilter > 0 && arr.length === 0) {
+  console.log(`[COMET] WARNING: All ${beforeFilter} streams were filtered out as error/warning messages!`);
+ }
  
  const preservedStreams = arr.map(stream => {
  const preserved = preserveStreamMetadata(stream, 'comet');
