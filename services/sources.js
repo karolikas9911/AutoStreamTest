@@ -589,6 +589,13 @@ async function fetchCometStreams(type, id, options = {}, log = ()=>{}) {
   return cached;
  }
  
+ // Log whether proxy will be used
+ if (CF_PROXY_URL) {
+  console.log(`[COMET] ✅ Using proxy: ${CF_PROXY_URL.substring(0, 50)}...`);
+ } else {
+  console.log(`[COMET] ⚠️ NO PROXY - CF_PROXY_URL not set! Direct fetch will likely fail.`);
+ }
+ 
  console.log(`[COMET] Fetching: ${url.substring(0, 100)}...`);
  
  // FIXED: Comet/ElfHosted blocks cloud IPs (Render, Vercel) - use CF proxy if available
