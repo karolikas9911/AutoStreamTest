@@ -592,7 +592,9 @@ async function fetchCometStreams(type, id, options = {}, log = ()=>{}) {
  console.log(`[COMET] Fetching: ${url.substring(0, 100)}...`);
  
  // FIXED: Comet/ElfHosted blocks cloud IPs (Render, Vercel) - use CF proxy if available
- const result = await fetchJson(url, 15000, (m,...a)=>log('comet',m,...a), true);
+ // Increased timeout from 15s to 30s - Comet needs time to scrape indexers
+ // The [🐢] turtle response means it's still processing
+ const result = await fetchJson(url, 30000, (m,...a)=>log('comet',m,...a), true);
  
  // Debug: Log the result status
  if (!result.ok) {

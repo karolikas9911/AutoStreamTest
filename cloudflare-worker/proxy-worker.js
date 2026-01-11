@@ -24,6 +24,20 @@ export default {
       });
     }
     
+    // Health check endpoint
+    if (url.pathname === '/health' || url.pathname === '/') {
+      return new Response(JSON.stringify({ 
+        status: 'ok', 
+        service: 'autostream-proxy',
+        usage: 'Add ?url=https://target-url.com/path to proxy requests'
+      }), {
+        headers: { 
+          'Content-Type': 'application/json',
+          'Access-Control-Allow-Origin': '*'
+        }
+      });
+    }
+    
     // Get target URL from query param
     const targetUrl = url.searchParams.get('url');
     
@@ -80,22 +94,28 @@ export default {
     }
     
     try {
-      // Forward the request
-      const proxyRequest = new Request(targetUrl, {
+      // Forward the request - IMPORTANT: Use 'Stremio' User-Agent
+      // Comet/ElfHosted may rate-limit non-Stremio user agents more aggressively
+      const response = await fetch(targetUrl, {
         method: request.method,
         headers: {
-          'User-Agent': 'AutoStream/4.0',
+          'User-Agent': 'Stremio',
           'Accept': 'application/json',
         },
         body: request.method !== 'GET' ? request.body : undefined,
+        // Use CF cache to reduce load on target servers and avoid rate limits
+        cf: {
+          cacheTtl: 300, // Cache for 5 minutes
+          cacheEverything: true
+        }
       });
-      
-      const response = await fetch(proxyRequest);
       
       // Return response with CORS headers
       const newHeaders = new Headers(response.headers);
       newHeaders.set('Access-Control-Allow-Origin', '*');
       newHeaders.set('Access-Control-Allow-Methods', 'GET, POST, OPTIONS');
+      // Add cache headers for the client too
+      newHeaders.set('Cache-Control', 'public, max-age=300');
       
       return new Response(response.body, {
         status: response.status,
