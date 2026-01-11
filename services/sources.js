@@ -566,13 +566,21 @@ async function fetchCometStreams(type, id, options = {}, log = ()=>{}) {
  
  if (!config && hasDebridOptions) {
   config = buildCometConfig(options.debridProvider, options.debridApiKey);
-  log('comet', `Building debrid config for provider: ${options.debridProvider}`);
+  console.log(`[COMET] Building config for provider: ${options.debridProvider}`);
  }
  
  const usingDebrid = config && config !== COMET_DEFAULT_CONFIG;
  config = config || COMET_DEFAULT_CONFIG;
  
- log('comet', `Using debrid: ${usingDebrid}, hasDebridOptions: ${hasDebridOptions}, provider: ${options.debridProvider || 'none'}`);
+ // Debug: Log the actual config being used (without exposing API key)
+ if (usingDebrid) {
+  try {
+   const decodedConfig = JSON.parse(Buffer.from(config, 'base64').toString());
+   console.log(`[COMET] Config: debridService=${decodedConfig.debridService}, hasKey=${!!decodedConfig.debridApiKey}`);
+  } catch (e) {
+   console.log(`[COMET] Config decode failed: ${e.message}`);
+  }
+ }
  
  const url = buildCometUrl(BASE_COMET, type, id, config);
  const cached = cometCache.get(url);
@@ -581,13 +589,21 @@ async function fetchCometStreams(type, id, options = {}, log = ()=>{}) {
   return cached;
  }
  
- log('comet', 'Fetching from:', url.substring(0, 80) + '...');
+ console.log(`[COMET] Fetching: ${url.substring(0, 100)}...`);
  
  // FIXED: Comet/ElfHosted blocks cloud IPs (Render, Vercel) - use CF proxy if available
  const result = await fetchJson(url, 15000, (m,...a)=>log('comet',m,...a), true);
+ 
+ // Debug: Log the result status
+ if (!result.ok) {
+  console.log(`[COMET] FAILED: ${result.error || 'Unknown error'}`);
+ }
+ 
  const j = result.ok ? result.data : null;
  let arr = Array.isArray(j) ? j : (j && Array.isArray(j.streams) ? j.streams : []);
  arr = Array.isArray(arr) ? arr : [];
+ 
+ console.log(`[COMET] Raw streams: ${arr.length}`);
  
  // Filter out error/info streams (non-debrid disabled messages, rate limits, etc.)
  arr = arr.filter(stream => {
