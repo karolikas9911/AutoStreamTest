@@ -24,8 +24,11 @@ export default {
       });
     }
     
-    // Health check endpoint
-    if (url.pathname === '/health' || url.pathname === '/') {
+    // Get target URL from query param FIRST (before health check)
+    const targetUrl = url.searchParams.get('url');
+    
+    // Health check endpoint - only if no url param provided
+    if ((url.pathname === '/health' || url.pathname === '/') && !targetUrl) {
       return new Response(JSON.stringify({ 
         status: 'ok', 
         service: 'autostream-proxy',
@@ -37,9 +40,6 @@ export default {
         }
       });
     }
-    
-    // Get target URL from query param
-    const targetUrl = url.searchParams.get('url');
     
     if (!targetUrl) {
       return new Response(JSON.stringify({ 
