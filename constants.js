@@ -10,13 +10,15 @@ const BASE_TPB = 'https://thepiratebay-plus.strem.fun';
 const BASE_CINEMETA = 'https://v3-cinemeta.strem.io/meta';
 const BASE_NUVIO = process.env.BASE_NUVIO || 'https://nuviostreams.hayd.uk';
 
-// MediaFusion and Comet - ElfHosted public instances
+// MediaFusion and Comet instances
 // These addons use path-based configuration:
 // - Comet: base64-encoded JSON config, e.g. /eyJkZWJyaWRTZXJ2aWNlIjoidG9ycmVudCJ9/stream/...
 // - MediaFusion: encrypted secret string, e.g. /D-/stream/... (D- = direct/no streaming provider)
 // For public use without debrid, we use minimal configs
 const BASE_MEDIAFUSION = process.env.BASE_MEDIAFUSION || 'https://mediafusion.elfhosted.com';
-const BASE_COMET = process.env.BASE_COMET || 'https://comet.elfhosted.com';
+// Use official Comet instance (comet.feels.legal) instead of ElfHosted
+// ElfHosted has aggressive rate limiting that blocks CF Workers and cloud IPs
+const BASE_COMET = process.env.BASE_COMET || 'https://comet.feels.legal';
 
 // Default configurations for public instance access (base64 encoded JSON for Comet)
 // Comet config: {"debridService":"torrent"} = direct torrent mode (no debrid required)

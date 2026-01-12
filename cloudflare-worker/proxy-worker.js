@@ -104,10 +104,11 @@ export default {
           'Accept': 'application/json',
         },
         body: request.method !== 'GET' ? request.body : undefined,
-        // Use CF cache to reduce load on target servers and avoid rate limits
+        // DISABLED CF edge caching - it was caching turtle/error responses
+        // and CF cache persists across deployments, causing stale data issues
         cf: {
-          cacheTtl: 300, // Cache for 5 minutes
-          cacheEverything: true
+          cacheTtl: 0,
+          cacheEverything: false
         }
       });
       
@@ -115,7 +116,7 @@ export default {
       const clonedResponse = response.clone();
       let shouldCache = true;
       
-      // Don't cache empty stream responses - they may be temporary failures
+      // Don't cache empty or error stream responses - they may be temporary failures
       try {
         const contentType = response.headers.get('content-type') || '';
         if (contentType.includes('application/json')) {
@@ -123,6 +124,21 @@ export default {
           // If streams array is empty or missing, don't cache
           if (!data.streams || data.streams.length === 0) {
             shouldCache = false;
+          }
+          // Don't cache error/warning/turtle responses from Comet
+          // These are temporary states that should be retried
+          if (data.streams && data.streams.length > 0) {
+            const firstStream = data.streams[0];
+            const name = (firstStream.name || '').toLowerCase();
+            const desc = (firstStream.description || '').toLowerCase();
+            // Check for error indicators
+            if (name.includes('🐢') || name.includes('⛔') || name.includes('❌') || 
+                name.includes('⚠') || name.includes('🚫') ||
+                name.includes('rate-limit') || name.includes('rate limit') ||
+                desc.includes('non-debrid') || desc.includes('disabled') ||
+                desc.includes('rate-limit') || desc.includes('rate limit')) {
+              shouldCache = false;
+            }
           }
         }
       } catch (e) {
