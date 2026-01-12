@@ -21,7 +21,6 @@ const { DEBRID_PROVIDERS, getEnabledProviders, getProvider, getProviderKeys, isV
 // 1. Unhandled Promise Rejection Handler (Prevents Node.js crashes)
 process.on('unhandledRejection', (reason, promise) => {
  console.error('[ERROR] Unhandled Promise Rejection:', reason);
- console.error('[DEBUG] Promise:', promise);
  // Log but don't crash - keep the addon running
 });
 
@@ -228,21 +227,9 @@ const FORCE_SECURE_MODE = process.env.FORCE_SECURE_MODE === 'true' || process.en
 const BLOCK_ENV_CREDENTIALS = process.env.BLOCK_ENV_CREDENTIALS !== 'false'; // Default to blocking
 const EMERGENCY_DISABLE_DEBRID = process.env.EMERGENCY_DISABLE_DEBRID === 'true';
 
-// CRITICAL: Log proxy status on startup
-if (CF_PROXY_URL) {
- console.log('[PROXY] ✅ CF_PROXY_URL is set:', CF_PROXY_URL);
- console.log('[PROXY] Comet/Torrentio requests will be proxied to bypass IP blocks');
-} else {
- console.log('[PROXY] ⚠️ CF_PROXY_URL NOT SET - Comet/Torrentio may fail on cloud hosts (Render/Vercel)');
- console.log('[PROXY] Set CF_PROXY_URL env var to your Cloudflare Worker proxy URL');
-}
-
-if (FORCE_SECURE_MODE) {
- console.log('[LOCKED] SECURE MODE: Environment credential fallbacks disabled');
-}
-
-if (EMERGENCY_DISABLE_DEBRID) {
- console.log('[ALERT] EMERGENCY MODE: All debrid features disabled');
+// Startup status (minimal)
+if (!CF_PROXY_URL) {
+ console.log('[WARN] CF_PROXY_URL not set - Comet may fail on cloud hosts');
 }
 
 // ----- remember manifest params -----
@@ -682,17 +669,13 @@ function enhanceForTV(stream, originalMetadata, requestId) {
  if (stream.infoHash && !stream.url) {
  stream.behaviorHints = stream.behaviorHints || {};
  stream.behaviorHints.notWebReady = true;
- console.log(`[${requestId}] [TV] Added notWebReady flag for TV device: ${stream.infoHash.substring(0, 8)}...`);
  }
  
  // Ensure filename is available for TV codec detection
  if (!stream.behaviorHints.filename && originalMetadata.filename) {
  stream.behaviorHints.filename = originalMetadata.filename;
- console.log(`[${requestId}] [TV] Restored filename for TV codec detection: ${originalMetadata.filename}`);
  }
  
- // Additional TV-specific logging
- console.log(`[${requestId}] [TV] Enhanced stream for TV: fileIdx=${stream.fileIdx}, sources=${stream.sources?.length || 0}, behaviorHints keys=[${Object.keys(stream.behaviorHints || {}).join(', ')}]`);
 }
 
 /**
@@ -722,9 +705,6 @@ function processStreamUrls(streams, requestId, nuvioCookie) {
  } else {
  // Non-debrid: Torrentio pattern - provide infoHash + sources, NO URL
  // Let Stremio handle the torrent internally (this works on Android TV)
- if (s.infoHash) {
- console.log(`[${requestId}] [MAGNET] Providing infoHash stream for client: ${s.infoHash.substring(0, 8)}...`);
- }
  
  // Remove any existing URL to force Stremio to use infoHash
  delete s.url;
@@ -1229,12 +1209,6 @@ function startServer(port = PORT) {
  const userAgent = req.headers['user-agent'] || '';
  const deviceType = scoring.detectDeviceType(req);
  
- console.log(`\n[PLAY] [${playRequestId}] ===== PLAY REQUEST =====`);
- console.log(`[${playRequestId}] [DEVICE] Device: ${deviceType}`);
- console.log(`[${playRequestId}] [WEB] User Agent: ${userAgent}`);
- console.log(`[${playRequestId}] [LINK] URL: ${sanitizeUrl(req.originalUrl)}`);
- console.log(`[${playRequestId}] [STATS] Query:`, sanitizeQueryParams(q));
- 
  return handlePlay(req, res, MANIFEST_DEFAULTS);
  }
 
@@ -1274,11 +1248,9 @@ function startServer(port = PORT) {
  const pathBasedMatch = pathname.match(/^\/([^\/]+)\/manifest\.json$/);
  if (pathBasedMatch) {
  const configurationPath = pathBasedMatch[1];
- console.log('[INFO] PATH-BASED: Processing configuration:', configurationPath);
  
  try {
  const configParams = parsePathConfiguration(configurationPath);
- console.log('[DEBUG] PATH-BASED: Parsed params:', configParams);
  const baseUrl = `${req.headers['x-forwarded-proto'] || 'http'}://${req.headers.host}`;
  const manifest = await createManifestFromConfig(configParams, baseUrl);
  
@@ -1293,32 +1265,6 @@ function startServer(port = PORT) {
 
  if (pathname === '/manifest.json') {
  const paramsObj = Object.fromEntries(q.entries());
- 
- // Enhanced logging for configuration debugging
- console.log('[CONFIG] MANIFEST REQUEST:', {
- pathname,
- queryString: req.url.split('?')[1] || 'no query string',
- paramsCount: Object.keys(paramsObj).length,
- paramKeys: Object.keys(paramsObj),
- userAgent: req.headers['user-agent'] || 'no user agent',
- referer: req.headers.referer || 'no referer'
- });
- 
- if (Object.keys(paramsObj).length > 0) {
- console.log('[STATS] MANIFEST: Saving configuration with params:', Object.keys(paramsObj));
- // Redacted param values for security
- const redactedParams = {};
- for (const [k, v] of Object.entries(paramsObj)) {
- if (['alldebrid', 'realdebrid', 'premiumize', 'torbox', 'offcloud', 'easydebrid', 'debridlink', 'putio', 'ad', 'rd', 'pm', 'tb', 'oc', 'ed', 'dl', 'pu', 'nuvio_cookie'].includes(k)) {
- redactedParams[k] = '[REDACTED]';
- } else {
- redactedParams[k] = v;
- }
- }
- console.log('[STATS] MANIFEST: Parameter values (redacted):', redactedParams);
- } else {
- console.log('[STATS] MANIFEST: No parameters received - generating basic manifest');
- }
  
  const remembered = {};
  for (const [k, v] of Object.entries(paramsObj)) if (REMEMBER_KEYS.has(k)) remembered[k] = String(v);
@@ -1432,33 +1378,10 @@ function startServer(port = PORT) {
  try {
  const pathParams = parsePathConfiguration(configurationPath);
  
- // Log the full parsed config (mask sensitive keys)
- const maskedParams = {};
- for (const [k, v] of Object.entries(pathParams)) {
- if (isSensitiveParam(k)) {
- maskedParams[k] = v ? `****${v.slice(-4)}` : 'empty';
- } else {
- maskedParams[k] = v;
- }
- }
- console.log('[INFO] PATH-BASED: Processing configuration:', configurationPath);
- console.log('[DEBUG] PATH-BASED: Parsed params:', JSON.stringify(maskedParams));
- 
  // Merge path params into query params (path params take precedence)
- let mergeCount = 0;
  for (const [key, value] of Object.entries(pathParams)) {
  if (!q.has(key)) {
  q.set(key, value);
- mergeCount++;
- }
- }
- console.log(`[DEBUG] PATH-BASED: Merged ${mergeCount} params into query`);
- 
- // Verify debrid params specifically
- const debridKeys = ['alldebrid', 'ad', 'realdebrid', 'rd', 'premiumize', 'pm', 'torbox', 'tb'];
- for (const dk of debridKeys) {
- if (q.has(dk) && q.get(dk)) {
- console.log(`[OK] PATH-BASED: Found debrid key "${dk}" = ****${q.get(dk).slice(-4)}`);
  }
  }
  } catch (error) {
@@ -1494,12 +1417,8 @@ function startServer(port = PORT) {
  return sanitized;
  }
  
- console.log(`\n[PLAY] [${requestId}] ===== STREAM REQUEST START =====`);
- console.log(`[${requestId}] [TV] Type: ${type}, ID: ${id}`);
- console.log(`[${requestId}] [DEVICE] Device Type: ${deviceType}`);
- console.log(`[${requestId}] [WEB] User Agent: "${userAgent}"`);
- console.log(`[${requestId}] [LINK] Full URL: ${sanitizeUrl(req.originalUrl)}`);
- console.log(`[${requestId}] [STATS] Query Params:`, sanitizeQueryParams(q));
+ // Simplified request logging
+ console.log(`[${requestId}] Stream: ${type}/${id} (${deviceType})`);
  
  // Simple universal device type (no TV-specific handling)
  const actualDeviceType = deviceType;
@@ -1566,23 +1485,13 @@ function startServer(port = PORT) {
  })();
  
  // Validate and potentially correct the IMDB ID before fetching streams
- console.log(`[${requestId}] [SEARCH] Validating IMDB ID: ${id}`);
  const idValidationResult = await validateAndCorrectIMDBID(id);
  const actualId = idValidationResult.correctedId;
  
- // Only log meaningful information - reduce noise
+ // Only log corrections (unusual cases)
  if (idValidationResult.needsCorrection) {
- console.log(`[${requestId}] [REFRESH] ID corrected: ${id} → ${actualId} (${idValidationResult.reason})`);
- } else if (idValidationResult.reason && idValidationResult.reason.includes("Invalid")) {
- // Only warn for actual format issues, not API failures
- console.log(`[${requestId}] [WARN] ID validation warning: ${idValidationResult.reason}`);
- } else if (idValidationResult.metadata && idValidationResult.metadata.name) {
- // Only log successful external validation if we have actual metadata
- console.log(`[${requestId}] [OK] ID validated: "${idValidationResult.metadata.name}" (${idValidationResult.metadata.year})`);
+ console.log(`[${requestId}] ID corrected: ${id} → ${actualId}`);
  }
- // Note: Format validation success doesn't need logging - it's expected behavior
- 
- console.log(`[${requestId}] [LOCATION] Stream request: ${type}/${actualId}`);
  
  // Parse enhanced configuration parameters
  const langPrioStr = getQ(q, 'lang_prio') || MANIFEST_DEFAULTS.lang_prio || '';
@@ -1592,9 +1501,6 @@ function startServer(port = PORT) {
  const additionalStreamEnabled = getQ(q, 'additionalstream') === '1' || getQ(q, 'fallback') === '1' || MANIFEST_DEFAULTS.additionalstream === '1' || MANIFEST_DEFAULTS.fallback === '1';
  const secondBestEnabled = getQ(q, 'secondBest') === '1' || getQ(q, 'secondbest') === '1' || MANIFEST_DEFAULTS.secondBest === '1';
  const conserveCookie = getQ(q, 'conserve_cookie') !== '0'; // Default to true unless explicitly disabled
- 
- // Debug logging for 2ndBest
- console.log(`[${requestId}] [DEBUG] secondBest query: "${getQ(q, 'secondBest')}", default: "${MANIFEST_DEFAULTS.secondBest}", enabled: ${secondBestEnabled}`);
  
  const blacklistStr = getQ(q, 'blacklist') || MANIFEST_DEFAULTS.blacklist || '';
  // Sanitize and validate blacklist terms
@@ -1633,19 +1539,8 @@ function startServer(port = PORT) {
  (!onlySource && dhosts.length === 0); // Enable by default when no specific sources requested
 
  // Extract debrid credentials early for Comet (it needs it for config)
- // This is a preliminary extraction - full validation happens later in the debrid section
- // First check all short-form and long-form provider keys
  let earlyDebridProvider = null;
  let earlyDebridApiKey = null;
- 
- // DEBUG: Log what's in q at this point for debrid keys
- const debugDebridKeys = ['ad', 'alldebrid', 'rd', 'realdebrid', 'pm', 'premiumize', 'tb', 'torbox', 'apikey'];
- const foundDebridInQ = [];
- for (const dk of debugDebridKeys) {
-  const val = q.get(dk);
-  if (val) foundDebridInQ.push(`${dk}=****${val.slice(-4)}`);
- }
- console.log(`[${requestId}] [DEBRID-DEBUG] Keys in q: ${foundDebridInQ.length > 0 ? foundDebridInQ.join(', ') : 'NONE'}`);
  
  // Short-form to long-form mapping for debrid providers
  const shortFormMapping = {
@@ -1706,7 +1601,6 @@ function startServer(port = PORT) {
  // fetch sources (no debrid here) - parallel execution with timeout for faster response
  // Torrentio and Comet now use debrid credentials when available
  // TPB disabled - 403 from cloud IPs
- console.log(`[${requestId}] [LAUNCH] Fetching streams from sources...`);
  const sourcePromises = [
  // Torrentio: Enable with debrid credentials via CF proxy (may still get 403 on cloud IPs)
  earlyDebridApiKey ? fetchTorrentioStreams(type, actualId, cometMfOptions, (msg) => log('Torrentio: ' + msg, 'verbose')) : Promise.resolve([]),
@@ -1741,8 +1635,6 @@ function startServer(port = PORT) {
  episode: null 
  }), 2500)) // Back to 2.5 seconds for better performance
  ]);
- 
- console.log(`[${requestId}] [CONFIG] Metadata result: name="${finalMeta.name}", timeout=${finalMeta.name === 'TIMEOUT_FALLBACK'}`);
  
  // If we timed out or got bad metadata, try to extract from streams
  if (finalMeta && (finalMeta.name === 'TIMEOUT_FALLBACK' || finalMeta.name === 'Content' || finalMeta.name?.startsWith('Content ') || finalMeta.name?.startsWith('Title ') || !finalMeta.name || finalMeta.name === actualId || finalMeta.name.startsWith('tt'))) {
@@ -1994,14 +1886,10 @@ function startServer(port = PORT) {
  }
  
  // RENDER-LEVEL SECURITY: Additional protection against environment credential usage
- if (BLOCK_ENV_CREDENTIALS && (process.env.ALLDEBRID_KEY || process.env.AD_KEY || process.env.APIKEY || process.env.RD_KEY || process.env.PM_KEY)) {
- log('[LOCKED] RENDER SECURITY: Dangerous environment variables detected and blocked');
- }
+ // Silently block dangerous environment variables
  
  // FORCE SECURE MODE: In production, never allow environment fallbacks
- if (FORCE_SECURE_MODE && Object.keys(providerConfig).length === 0) {
- console.log(`[${requestId}] [LOCKED] SECURE MODE: Only user-provided API keys allowed, no environment fallbacks`);
- }
+ // (No log needed - this is the expected secure behavior)
  
  // EMERGENCY DEBRID DISABLE: Server-wide debrid shutdown capability
  if (EMERGENCY_DISABLE_DEBRID) {
@@ -2029,7 +1917,6 @@ function startServer(port = PORT) {
  if (cached && cached.isValid && (Date.now() - cached.timestamp) < 30 * 60 * 1000) {
  // Cache hit - trust the key without API call
  workingProviders.push(pv);
- console.log(`[${requestId}] [PERF] Using cached validation for ${pv.provider} (no API call)`);
  } else if (!cached || (Date.now() - cached.timestamp) >= 30 * 60 * 1000) {
  // Cache miss or expired - need to validate (this updates the cache)
  workingProviders = await validateProvidersParallel(providersToValidate, validators);
@@ -2086,11 +1973,9 @@ function startServer(port = PORT) {
  if (effectiveAdParam) {
  // Debrid mode: take top stream for processing, but keep all scored streams for additional stream logic
  selectedStreams = [allScoredStreams[0]].filter(Boolean); // Just the top stream initially
- console.log(`[${requestId}] � Debrid mode: selected top stream for processing, ${allScoredStreams.length} total available for additional stream selection`);
  } else {
  // Non-debrid mode: take top stream for processing, but keep all scored streams for additional stream logic 
  selectedStreams = [allScoredStreams[0]].filter(Boolean); // Just the top stream initially
- console.log(`[${requestId}] [TV] Non-debrid mode: selected top stream for processing, ${allScoredStreams.length} total available for additional stream selection`);
  }
  
  // Define originBase for URL building (used in multiple places)
@@ -2141,8 +2026,6 @@ function startServer(port = PORT) {
  
  } else {
  // No debrid available - use Torrentio pattern (infoHash + sources, no URLs)
- console.log(`[${requestId}] [INFO] No debrid available - providing raw magnet URLs for external torrent clients`);
- 
  // Don't assign URLs here - let __finalize handle the Torrentio pattern
  // For non-debrid streams, we want infoHash + sources but NO URL
  // This allows Stremio to handle torrents internally (works on Android TV)
@@ -2199,7 +2082,6 @@ function startServer(port = PORT) {
  // Make sure it's different content
  if (candidateId !== primaryId) {
  secondBest = { ...candidate };
- console.log(`[${requestId}] [SECOND] Found 2nd best stream: ${candidate.title?.substring(0, 50) || candidate.name?.substring(0, 50) || 'Unknown'}...`);
  }
  }
  
@@ -2213,8 +2095,6 @@ function startServer(port = PORT) {
  else targetRes = 0; // Don't go below 480p
  
  if (targetRes > 0) {
- console.log(`[${requestId}] [SEARCH] Looking for backup stream: primary is ${pRes}p, seeking ${targetRes}p`);
- 
  // Look through scored streams to find target resolution (skip already selected streams)
  const secondBestId = secondBest?.infoHash || secondBest?.url;
  for (const candidate of allScoredStreams.slice(1)) { // Skip first (primary)
@@ -2226,7 +2106,6 @@ function startServer(port = PORT) {
  // Make sure it's different content and target resolution (and not the 2nd best stream)
  if (candidateRes === targetRes && candidateId !== primaryId && candidateId !== secondBestId) {
  backupStream = { ...candidate };
- console.log(`[${requestId}] [OK] Found backup stream: ${candidate.title?.substring(0, 50) || candidate.name?.substring(0, 50) || 'Unknown'}...`);
  break;
  }
  }
@@ -2358,7 +2237,6 @@ function startServer(port = PORT) {
  // Add additional streams to final output
  if (additionalStreams.length > 0) {
  streams = [primary, ...additionalStreams];
- console.log(`[${requestId}] [TARGET] Processed ${streams.length} streams total (1 primary + ${additionalStreams.length} additional)`);
  }
  }
  
@@ -2424,9 +2302,6 @@ function startServer(port = PORT) {
  
  if (streams.length > finalStreamCount) {
  streams = streams.slice(0, finalStreamCount);
- console.log(`[${requestId}] [CONTROL] Stream visibility: showing ${finalStreamCount} streams (2ndBest=${secondBestEnabled}, Additional=${additionalStreamEnabled})`);
- } else if (streams.length > 1) {
- console.log(`[${requestId}] [CONTROL] Showing ${streams.length} streams (2ndBest=${secondBestEnabled}, Additional=${additionalStreamEnabled})`);
  }
 
  // STEP: Apply beautified names and titles (AFTER all scoring and processing)
@@ -2491,11 +2366,9 @@ function startServer(port = PORT) {
  // CRITICAL: Clean up internal properties before sending to Stremio
  // Stremio may ignore or fail on streams with unknown properties
  // IMPORTANT: Match Comet/Torrentio exact format - no 'title' field, use 'description' for details
- console.log(`[${requestId}] [DEBUG] Cleaning ${streams.length} streams for Stremio...`);
  
  const cleanedStreams = streams.map((s, idx) => {
  if (!s) {
-  console.log(`[${requestId}] [DEBUG] Stream ${idx}: NULL`);
   return null;
  }
  
@@ -2513,8 +2386,6 @@ function startServer(port = PORT) {
  if (s.fileIdx !== undefined && s.fileIdx !== null) clean.fileIdx = s.fileIdx;
  if (Array.isArray(s.sources) && s.sources.length > 0) clean.sources = s.sources;
  if (s.subtitles) clean.subtitles = s.subtitles;
- 
- console.log(`[${requestId}] [DEBUG] Stream ${idx}: name="${clean.name}", url=${clean.url ? 'YES' : 'NO'}, desc=${clean.description ? clean.description.substring(0, 40) + '...' : 'NO'}`);
  
  return clean;
  }).filter(Boolean);

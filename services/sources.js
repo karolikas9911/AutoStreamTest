@@ -584,21 +584,12 @@ async function fetchCometStreams(type, id, options = {}, log = ()=>{}) {
  
  if (!config && hasDebridOptions) {
   config = buildCometConfig(options.debridProvider, options.debridApiKey);
-  console.log(`[COMET] Building config for provider: ${options.debridProvider}`);
  }
  
  const usingDebrid = config && config !== COMET_DEFAULT_CONFIG;
  config = config || COMET_DEFAULT_CONFIG;
  
- // Debug: Log the actual config being used (without exposing API key)
- if (usingDebrid) {
-  try {
-   const decodedConfig = JSON.parse(Buffer.from(config, 'base64').toString());
-   console.log(`[COMET] Config: debridService=${decodedConfig.debridService}, hasKey=${!!decodedConfig.debridApiKey}`);
-  } catch (e) {
-   console.log(`[COMET] Config decode failed: ${e.message}`);
-  }
- }
+
  
  const url = buildCometUrl(BASE_COMET, type, id, config);
  const cached = cometCache.get(url);
@@ -607,37 +598,18 @@ async function fetchCometStreams(type, id, options = {}, log = ()=>{}) {
   return cached;
  }
  
- // Log whether proxy will be used
- if (CF_PROXY_URL) {
-  console.log(`[COMET] ✅ Using proxy: ${CF_PROXY_URL.substring(0, 50)}...`);
- } else {
-  console.log(`[COMET] ⚠️ NO PROXY - CF_PROXY_URL not set! Direct fetch will likely fail.`);
- }
- 
- console.log(`[COMET] Fetching: ${url.substring(0, 100)}...`);
+
  
  // FIXED: Comet/ElfHosted blocks cloud IPs (Render, Vercel) - use CF proxy if available
  // Increased timeout from 15s to 30s - Comet needs time to scrape indexers
  // The [🐢] turtle response means it's still processing
  const result = await fetchJson(url, 30000, (m,...a)=>log('comet',m,...a), true);
  
- // Debug: Log the result status
- if (!result.ok) {
-  console.log(`[COMET] FAILED: ${result.error || 'Unknown error'}`);
- }
- 
  const j = result.ok ? result.data : null;
  let arr = Array.isArray(j) ? j : (j && Array.isArray(j.streams) ? j.streams : []);
  arr = Array.isArray(arr) ? arr : [];
  
- console.log(`[COMET] Raw streams: ${arr.length}`);
- 
- // Debug: Log what Comet actually returned (first stream)
- if (arr.length > 0 && arr.length <= 5) {
-  arr.forEach((s, i) => {
-   console.log(`[COMET] Stream ${i}: name="${s.name?.substring(0, 50)}", desc="${(s.description || '').substring(0, 80)}"`);
-  });
- }
+
  
  // Filter out error/info streams (non-debrid disabled messages, rate limits, etc.)
  const beforeFilter = arr.length;
@@ -654,9 +626,7 @@ async function fetchCometStreams(type, id, options = {}, log = ()=>{}) {
   return true;
  });
  
- if (beforeFilter > 0 && arr.length === 0) {
-  console.log(`[COMET] WARNING: All ${beforeFilter} streams were filtered out as error/warning messages!`);
- }
+
  
  const preservedStreams = arr.map(stream => {
  const preserved = preserveStreamMetadata(stream, 'comet');
