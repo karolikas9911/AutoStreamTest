@@ -71,6 +71,7 @@ export default {
     // Whitelist allowed domains (prevent abuse)
     const allowedDomains = [
       'comet.elfhosted.com',
+      'comet.feels.legal',  // Official Comet instance (alternative)
       'mediafusion.elfhosted.com',
       'torrentio.strem.fun',
       'thepiratebay-plus.strem.fun',
@@ -110,12 +111,31 @@ export default {
         }
       });
       
+      // Clone response to check content without consuming the body
+      const clonedResponse = response.clone();
+      let shouldCache = true;
+      
+      // Don't cache empty stream responses - they may be temporary failures
+      try {
+        const contentType = response.headers.get('content-type') || '';
+        if (contentType.includes('application/json')) {
+          const data = await clonedResponse.json();
+          // If streams array is empty or missing, don't cache
+          if (!data.streams || data.streams.length === 0) {
+            shouldCache = false;
+          }
+        }
+      } catch (e) {
+        // If we can't parse JSON, still return the response but don't cache
+        shouldCache = false;
+      }
+      
       // Return response with CORS headers
       const newHeaders = new Headers(response.headers);
       newHeaders.set('Access-Control-Allow-Origin', '*');
       newHeaders.set('Access-Control-Allow-Methods', 'GET, POST, OPTIONS');
-      // Add cache headers for the client too
-      newHeaders.set('Cache-Control', 'public, max-age=300');
+      // Only cache if we got valid streams
+      newHeaders.set('Cache-Control', shouldCache ? 'public, max-age=300' : 'no-store, no-cache');
       
       return new Response(response.body, {
         status: response.status,

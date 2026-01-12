@@ -129,12 +129,30 @@ function buildCometConfig(debridProvider, apiKey) {
 
  const debridService = providerMapping[debridProvider?.toLowerCase()] || 'torrent';
  
+ // COMPLETE config matching Comet's ConfigModel expectations
+ // Missing fields cause Pydantic validation to fail and fallback to "torrent" mode
+ // which returns 0 streams on ElfHosted (P2P disabled)
  const config = {
   debridService: debridService,
   debridApiKey: apiKey || '',
+  debridStreamProxyPassword: '',
   maxResultsPerResolution: 0,
   maxSize: 0,
-  resultFormat: ['all']
+  cachedOnly: false,
+  sortCachedUncachedTogether: false,
+  removeTrash: true,
+  resultFormat: ['all'],
+  // CRITICAL: These objects are required by Comet's Pydantic model
+  resolutions: {},  // Empty object = all resolutions enabled
+  languages: {
+   exclude: [],
+   preferred: []
+  },
+  options: {
+   remove_ranks_under: -10000000000,
+   allow_english_in_languages: false,
+   remove_unknown_languages: false
+  }
  };
  
  return Buffer.from(JSON.stringify(config)).toString('base64');
