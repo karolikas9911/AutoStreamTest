@@ -2269,7 +2269,9 @@ function startServer(port = PORT) {
  tag(nextTorr, 'torrentio'),
  tag(nextTPB, 'tpb'), 
  tag(nextNuvio, 'nuvio'),
- rawStreams = sortByOriginPriority(rawStreams, { labelOrigin: false }));
+ tag(nextComet, 'comet')
+ );
+ rawStreams = sortByOriginPriority(rawStreams, { labelOrigin: false });
  const allScoredStreams = scoring.filterAndScoreStreams(rawStreams, preloadReq, preloadScoringOptions);
  const processedStreams = allScoredStreams.slice(0, 2); // Always process both for preload
  
