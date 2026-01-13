@@ -12,12 +12,12 @@ const {
  CF_PROXY_URL 
 } = require('../constants');
 
-const torrentioCache = new TTLCache({ max: 500, ttlMs: 60 * 60 * 1000 });
-const tpbCache = new TTLCache({ max: 300, ttlMs: 60 * 60 * 1000 });
-const nuvioCache = new TTLCache({ max: 500, ttlMs: 60 * 60 * 1000 }); // Increased from 12 min to 60 min
-const mediafusionCache = new TTLCache({ max: 500, ttlMs: 60 * 60 * 1000 });
-const cometCache = new TTLCache({ max: 500, ttlMs: 60 * 60 * 1000 });
-const mediafusionConfigCache = new TTLCache({ max: 50, ttlMs: 24 * 60 * 60 * 1000 }); // 24 hour cache for encrypted configs
+const torrentioCache = new TTLCache({ max: 200, ttlMs: 30 * 60 * 1000 }); // Reduced for memory efficiency
+const tpbCache = new TTLCache({ max: 100, ttlMs: 30 * 60 * 1000 }); // Reduced for memory efficiency
+const nuvioCache = new TTLCache({ max: 200, ttlMs: 30 * 60 * 1000 }); // Reduced for memory efficiency
+const mediafusionCache = new TTLCache({ max: 200, ttlMs: 30 * 60 * 1000 }); // Reduced for memory efficiency
+const cometCache = new TTLCache({ max: 200, ttlMs: 30 * 60 * 1000 }); // Reduced for memory efficiency
+const mediafusionConfigCache = new TTLCache({ max: 20, ttlMs: 12 * 60 * 60 * 1000 }); // Reduced for memory efficiency
 
 /**
  * Clear all source caches

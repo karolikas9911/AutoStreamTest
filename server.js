@@ -274,11 +274,11 @@ setInterval(() => {
  const heapUsedMB = Math.round(memUsage.heapUsed / 1024 / 1024);
  const rssMB = Math.round(memUsage.rss / 1024 / 1024);
  
- if (heapUsedMB > 200) { // Alert if over 200MB
+ if (heapUsedMB > 150) { // Alert earlier at 150MB (Render free tier is 512MB)
  console.log(`[WARN] High memory usage: ${heapUsedMB}MB heap, ${rssMB}MB RSS`);
  
  // Force garbage collection if available (requires --expose-gc flag)
- if (global.gc && heapUsedMB > 300) {
+ if (global.gc && heapUsedMB > 200) {
  console.log(`[CLEANUP] Forcing garbage collection...`);
  global.gc();
  
@@ -691,6 +691,12 @@ function processStreamUrls(streams, requestId, nuvioCookie) {
  // First try existing URLs
  s.url = s.url || s.externalUrl || s.link || (s.sources && s.sources[0] && s.sources[0].url) || '';
  
+ // Skip Comet streams - they come pre-resolved with debrid URLs from the service
+ if (s.autostreamOrigin === 'comet') {
+ // Comet streams are already processed by Comet's debrid service
+ return;
+ }
+ 
  // Torrentio-style stream handling: debrid streams get /play URLs, non-debrid get infoHash only
  if (s.infoHash && (!s.url || /^magnet:/i.test(s.url))) {
  // Check if this is a debrid stream (should have a play URL by now)
@@ -698,18 +704,14 @@ function processStreamUrls(streams, requestId, nuvioCookie) {
  
  if (isDebridStream) {
  // Debrid stream should have a play URL assigned - if not, this is an error
- if (!s.url || /^magnet:/i.test(s.url)) {
- console.warn(`[${requestId}] [WARN] Debrid stream missing play URL: ${s.infoHash?.substring(0, 8)}...`);
- }
- // Keep the debrid play URL, don't replace with magnet
+ // This should only happen for Torrentio/TPB streams that failed /play URL generation
+ // (Comet streams are handled above)
  } else {
  // Non-debrid: Torrentio pattern - provide infoHash + sources, NO URL
  // Let Stremio handle the torrent internally (this works on Android TV)
  
  // Remove any existing URL to force Stremio to use infoHash
  delete s.url;
- 
- // NOTE: Sources are now enhanced in Phase 1, not just basic DHT
  }
  }
  
