@@ -227,9 +227,13 @@ const FORCE_SECURE_MODE = process.env.FORCE_SECURE_MODE === 'true' || process.en
 const BLOCK_ENV_CREDENTIALS = process.env.BLOCK_ENV_CREDENTIALS !== 'false'; // Default to blocking
 const EMERGENCY_DISABLE_DEBRID = process.env.EMERGENCY_DISABLE_DEBRID === 'true';
 
-// Startup status (minimal)
+// Startup status - show CF_PROXY_URL status
+console.log(`[STARTUP] CF_PROXY_URL from env: "${process.env.CF_PROXY_URL || '(not set)'}"`);
+console.log(`[STARTUP] CF_PROXY_URL constant: "${CF_PROXY_URL || '(empty)'}"`);
 if (!CF_PROXY_URL) {
  console.log('[WARN] CF_PROXY_URL not set - Comet may fail on cloud hosts');
+} else {
+ console.log(`[OK] CF Proxy enabled: ${CF_PROXY_URL}`);
 }
 
 // ----- remember manifest params -----
@@ -1100,6 +1104,7 @@ function startServer(port = PORT) {
  const results = { 
  cfProxy: CF_PROXY_URL ? 'enabled' : 'disabled',
  cfProxyUrl: CF_PROXY_URL || null,
+ cfProxyEnvRaw: process.env.CF_PROXY_URL || '(not set)',
  debridConfigured: !!testDebridApiKey,
  torrentio: null, 
  tpb: null, 
@@ -1537,8 +1542,21 @@ function startServer(port = PORT) {
 
  // which sources
  const dhosts = String(getQ(q,'dhosts') || MANIFEST_DEFAULTS.dhosts || '').toLowerCase().split(',').map(s=>s.trim()).filter(Boolean);
- const nuvioEnabled = dhosts.includes('nuvio') || q.get('nuvio') === '1' || q.get('include_nuvio') === '1' || MANIFEST_DEFAULTS.nuvio === '1' || MANIFEST_DEFAULTS.include_nuvio === '1' || onlySource === 'nuvio' || 
- (!onlySource && dhosts.length === 0); // Enable by default when no specific sources requested
+ 
+ // Check if Nuvio is explicitly disabled (nuvio=0 or include_nuvio=0)
+ const nuvioExplicitlyDisabled = q.get('nuvio') === '0' || q.get('include_nuvio') === '0' || 
+   MANIFEST_DEFAULTS.nuvio === '0' || MANIFEST_DEFAULTS.include_nuvio === '0';
+ 
+ // Nuvio is enabled if: explicitly enabled OR (default when no sources specified AND not explicitly disabled)
+ const nuvioEnabled = !nuvioExplicitlyDisabled && (
+   dhosts.includes('nuvio') || 
+   q.get('nuvio') === '1' || 
+   q.get('include_nuvio') === '1' || 
+   MANIFEST_DEFAULTS.nuvio === '1' || 
+   MANIFEST_DEFAULTS.include_nuvio === '1' || 
+   onlySource === 'nuvio' || 
+   (!onlySource && dhosts.length === 0) // Enable by default when no specific sources requested
+ );
 
  // Extract debrid credentials early for Comet (it needs it for config)
  let earlyDebridProvider = null;
