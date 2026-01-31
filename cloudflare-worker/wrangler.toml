@@ -5,4 +5,4 @@ compatibility_date = "2024-01-01"
 # Optional: Add KV namespace for caching (improves performance)
 # [[kv_namespaces]]
 # binding = "CACHE"
-# id = "your-kv-namespace-id"
+# id = "928dc36173b84dd8bee471aecaf69a8d"

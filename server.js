@@ -1106,30 +1106,9 @@ function startServer(port = PORT) {
  cfProxyUrl: CF_PROXY_URL || null,
  cfProxyEnvRaw: process.env.CF_PROXY_URL || '(not set)',
  debridConfigured: !!testDebridApiKey,
- torrentio: null, 
- tpb: null, 
- nuvio: null,
  comet: null,
  errors: [] 
  };
- 
- try {
- const start = Date.now();
- const torr = await fetchTorrentioStreams(testType, testId, {}, (m,...a) => results.errors.push(['torrentio', m, ...a]));
- results.torrentio = { count: torr.length, time: Date.now() - start, sample: torr[0]?.title?.substring(0,50) };
- } catch (e) { results.torrentio = { error: e.message }; }
- 
- try {
- const start = Date.now();
- const tpb = await fetchTPBStreams(testType, testId, {}, (m,...a) => results.errors.push(['tpb', m, ...a]));
- results.tpb = { count: tpb.length, time: Date.now() - start, sample: tpb[0]?.title?.substring(0,50) };
- } catch (e) { results.tpb = { error: e.message }; }
- 
- try {
- const start = Date.now();
- const nuvio = await fetchNuvioStreams(testType, testId, { query: { direct: '1' } }, (m,...a) => results.errors.push(['nuvio', m, ...a]));
- results.nuvio = { count: nuvio.length, time: Date.now() - start, sample: nuvio[0]?.title?.substring(0,50) };
- } catch (e) { results.nuvio = { error: e.message }; }
 
  try {
  const start = Date.now();
@@ -1618,15 +1597,11 @@ function startServer(port = PORT) {
  } : {};
 
 
- // fetch sources (no debrid here) - parallel execution with timeout for faster response
- // Torrentio and Comet now use debrid credentials when available
- // TPB disabled - 403 from cloud IPs
+ // fetch sources - Comet is the primary source
  const sourcePromises = [
- // Torrentio: Enable with debrid credentials via CF proxy (may still get 403 on cloud IPs)
- earlyDebridApiKey ? fetchTorrentioStreams(type, actualId, cometMfOptions, (msg) => log('Torrentio: ' + msg, 'verbose')) : Promise.resolve([]),
- Promise.resolve([]), // TPB disabled - 403 from cloud IPs  
- nuvioEnabled ? fetchNuvioStreams(type, actualId, { query: { direct: '1' }, cookie: nuvioCookie }, (msg) => log('Nuvio: ' + msg, 'verbose')) : Promise.resolve([]),
- // Comet: Primary debrid source - always enabled when debrid credentials available
+ Promise.resolve([]),
+ Promise.resolve([]),  
+ Promise.resolve([]),
  fetchCometStreams(type, actualId, cometMfOptions, (msg) => log('Comet: ' + msg, 'verbose'))
  ];
  
@@ -2272,11 +2247,10 @@ function startServer(port = PORT) {
  // Don't await this - let it happen in background
  seriesCache.preloadNextEpisode(type, id, async (t, i) => {
  try {
- // Use Promise.allSettled for resilient background preloading
  const [nextTorrResult, nextTPBResult, nextNuvioResult, nextCometResult] = await Promise.allSettled([
- (!onlySource || onlySource === 'torrentio') ? fetchTorrentioStreams(t, i, {}, ()=>{}) : Promise.resolve([]),
- (!onlySource || onlySource === 'tpb') ? fetchTPBStreams(t, i, {}, ()=>{}) : Promise.resolve([]),
- nuvioEnabled ? fetchNuvioStreams(t, i, { query: { direct: '1' }, cookie: nuvioCookie }, ()=>{}) : Promise.resolve([]),
+ Promise.resolve([]),
+ Promise.resolve([]),
+ Promise.resolve([]),
  (!onlySource || onlySource === 'comet') ? fetchCometStreams(t, i, cometMfOptions, ()=>{}) : Promise.resolve([])
  ]);
 

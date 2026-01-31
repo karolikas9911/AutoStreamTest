@@ -83,7 +83,7 @@
   <div class="wrap">
     <div class="card">
       <h1>AutoStream Configuration</h1>
-      <p class="subtle">Choose preferences and click <b>Install</b>. Debrid <b>required</b>. Nuvio optional.</p>
+      <p class="subtle">Choose preferences and click <b>Install</b>. Debrid <b>required</b>.</p>
 
       <div class="columns">
         <!-- LEFT COLUMN -->
@@ -127,6 +127,7 @@
             <div class="help">If enabled, you will see the top 2 streams (2nd Best) plus a lower resolution backup. The backup always tries to find the best stream in a lower resolution as a safety option.</div>
           </div>
 
+          <!-- Nuvio DISABLED: No longer supported
           <div>
             <div id="toggleNuvio" class="toggle-box" role="button" tabindex="0" aria-pressed="false">
               <input id="nuvioEnabled" type="checkbox" />
@@ -134,6 +135,7 @@
             </div>
             <div class="help">Nuvio is an additional stream source (like Torrentio, TPB+), but instead of using torrents, it is fetching from direct streams. It is more likely to break, but the addon has accounted for any breaking, it is here for those who don't want it on.</div>
           </div>
+          -->
 
           <!-- Hidden but functional cookie conservation option -->
           <div class="hidden">
@@ -162,11 +164,13 @@
             <div id="langPills" class="lang-grid one"></div>
           </div>
 
+          <!-- Cookie section DISABLED: Nuvio no longer supported
           <div id="cookieSection">
             <label>Personal Cookie (Optional)</label>
             <input id="nuvioCookie" class="control" type="text" placeholder="Paste FebBox/ShowBox cookie or token" />
             <div class="help">Without personalization, you'll share cookies with other addon users, which can exhaust the 100GB quota quickly and result in slow streams. When not using a personal cookie, Nuvio streams are limited to sizes below 9GB.</div>
           </div>
+          -->
         </div>
       </div>
 

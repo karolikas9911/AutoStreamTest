@@ -148,8 +148,8 @@
  const blacklistAddEl = $('#blacklistAdd');
  const blacklistClearEl = $('#blacklistClear');
  const blacklistPillsEl = $('#blacklistPills');
- const nuvioEnabledEl = $('#nuvioEnabled');
- const nuvioCookieEl = $('#nuvioCookie');
+ const nuvioEnabledEl = $('#nuvioEnabled'); // May be null - disabled
+ const nuvioCookieEl = $('#nuvioCookie'); // May be null - disabled
  const conserveCookieEl = $('#conserveCookie');
  const sizePresetEl = $('#sizePreset');
  const sizeCustomEl = $('#sizeCustom');
@@ -167,8 +167,9 @@
  apikeyEl.value = state.apiKey || '';
  fallbackEl.checked = !!state.fallback;
  secondBestEl.checked = state.secondBest !== false; // Default true
- nuvioEnabledEl.checked = !!state.nuvioEnabled;
- nuvioCookieEl.value = state.nuvioCookie || '';
+ // Nuvio elements may not exist (disabled) - check before setting
+ if (nuvioEnabledEl) nuvioEnabledEl.checked = !!state.nuvioEnabled;
+ if (nuvioCookieEl) nuvioCookieEl.value = state.nuvioCookie || '';
  conserveCookieEl.checked = state.conserveCookie !== false; // Default true
  
  // Hydrate size preset from state
@@ -320,13 +321,18 @@
  sizePresetEl.onchange = ()=>{ sizeCustomEl.value=''; syncSize(); persist(); rerender(); };
  sizeCustomEl.oninput = ()=>{ syncSize(); persist(); rerender(); };
 
+ // Nuvio event handlers - only wire if elements exist (may be disabled)
+ if (nuvioEnabledEl) {
  nuvioEnabledEl.onchange = ()=>{
- state.nuvioEnabled = !!nuvioEnabledEl.checked; 
- persist(); 
- rerender();
- refreshCookieVisibility();
+  state.nuvioEnabled = !!nuvioEnabledEl.checked; 
+  persist(); 
+  rerender();
+  refreshCookieVisibility();
  };
+ }
+ if (nuvioCookieEl) {
  nuvioCookieEl.oninput = ()=>{ state.nuvioCookie = (nuvioCookieEl.value||'').trim(); persist(); rerender(); };
+ }
  conserveCookieEl.onchange = ()=>{ state.conserveCookie = !!conserveCookieEl.checked; persist(); rerender(); };
 
  // Clickable toggle boxes
@@ -352,12 +358,12 @@
  }
  wireToggle('toggleFallback', fallbackEl);
  wireToggle('toggleSecondBest', secondBestEl);
- wireToggle('toggleNuvio', nuvioEnabledEl);
+ if (nuvioEnabledEl) wireToggle('toggleNuvio', nuvioEnabledEl); // Only if nuvio enabled
  wireToggle('toggleConserveCookie', conserveCookieEl);
 
  function refreshCookieVisibility(){
  if (!cookieSection) return;
- if (nuvioEnabledEl.checked) cookieSection.classList.remove('hidden');
+ if (nuvioEnabledEl && nuvioEnabledEl.checked) cookieSection.classList.remove('hidden');
  else cookieSection.classList.add('hidden');
  }
 

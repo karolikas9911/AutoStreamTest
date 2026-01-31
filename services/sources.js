@@ -378,6 +378,9 @@ async function fetchJson(url, timeoutMs, log = ()=>{}, useProxy = true) {
  }
 }
 async function fetchTorrentioStreams(type, id, options = {}, log = ()=>{}) {
+ return [];
+ 
+ /* DISABLED - Original implementation below
  // Build debrid config if credentials provided
  const debridConfig = options.debridProvider && options.debridApiKey 
   ? buildTorrentioConfig(options.debridProvider, options.debridApiKey)
@@ -450,6 +453,9 @@ async function fetchTorrentioStreams(type, id, options = {}, log = ()=>{}) {
  return streams;
 }
 async function fetchTPBStreams(type, id, query, log = ()=>{}) {
+ return [];
+ 
+ /* DISABLED - Original implementation below
  const url = buildUrl(BASE_TPB, type, id, query);
  const cached = tpbCache.get(url); if (cached) return cached;
  const result = await fetchJson(url, 12000, (m,...a)=>log('tpb',m,...a));
@@ -472,6 +478,9 @@ function pickCookie(opts) {
  return (opts && opts.cookie) || q.dcookie || q.nuvio_cookie || '';
 }
 async function fetchNuvioStreams(type, id, options = {}, log = ()=>{}) {
+ return [];
+ 
+ /* DISABLED - Original implementation below
  const base = (options.base || BASE_NUVIO || 'https://nuviostreams.hayd.uk').replace(/\/+$/, '');
  const cookie = pickCookie(options);
  const query = Object.assign({ direct: '1' }, options.query || {}, cookie ? { cookie } : {});
